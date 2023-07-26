@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">SocialCommunityThread</string>
+    <string name="sign_in">Sign in</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="registration">Registration</string>
+    <string name="login">Login</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="user_name">Username</string>
+    <string name="register">Register</string>
+    <string name="main_thread">Main Thread</string>
+    <string name="chat">Chat</string>
+    <string name="save">Save</string>
+    <string name="create_thread">Create Thread</string>
+    <string name="saved_posts">Saved Posts</string>
+    <string name="saved">Saved</string>
+    <string name="search">Search</string>
+    <string name="send">Send</string>
+</resources>

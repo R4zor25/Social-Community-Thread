@@ -169,6 +169,9 @@ dependencies {
 
     //emulator firebase
     implementation "io.grpc:grpc-okhttp:1.52.1"
+
+    //Splash
+    implementation 'com.airbnb.android:lottie-compose:5.2.0'
 }
 kapt {
     correctErrorTypes true

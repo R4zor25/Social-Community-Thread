@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.*
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.BottomNavItem
 
 sealed class ThreadScreenNav(val route: String) {
+    object SplashScreenNav : ThreadScreenNav("splash")
     object LoginScreenNav : ThreadScreenNav("login_")
     object RegistrationScreenNav : ThreadScreenNav("registration")
     object MainThreadScreenNav : ThreadScreenNav("main_thread")

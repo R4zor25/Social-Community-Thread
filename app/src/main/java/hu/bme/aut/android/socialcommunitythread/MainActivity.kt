@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.os.PersistableBundle
 import android.util.Log
 import android.widget.Toast
+import android.window.SplashScreen
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.ExperimentalGetImage
@@ -12,6 +13,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode.Companion.Screen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -31,6 +33,7 @@ import hu.bme.aut.android.socialcommunitythread.ui.friendlist.FriendListScreen
 import hu.bme.aut.android.socialcommunitythread.ui.mainthread.MainThreadScreen
 import hu.bme.aut.android.socialcommunitythread.ui.savedposts.SavedPostsScreen
 import hu.bme.aut.android.socialcommunitythread.ui.search.SearchScreen
+import hu.bme.aut.android.socialcommunitythread.ui.splash.SplashScreen
 import hu.bme.aut.android.socialcommunitythread.ui.theme.AppJetpackComposeTheme
 import hu.bme.aut.android.socialcommunitythread.ui.thread.TopicThreadScreen
 import hu.bme.aut.android.socialcommunitythread.ui.threaddetails.ThreadDetailsScreen
@@ -57,8 +60,11 @@ class MainActivity : AppCompatActivity() {
                     val navController = rememberNavController()
                     NavHost(
                         navController = navController,
-                        startDestination = ThreadScreenNav.LoginScreenNav.route
+                        startDestination = ThreadScreenNav.SplashScreenNav.route
                     ) {
+                        composable(route = ThreadScreenNav.SplashScreenNav.route) {
+                            SplashScreen(navController = navController)
+                        }
                         composable(
                             route = ThreadScreenNav.LoginScreenNav.route
                         ) {

@@ -1,51 +1,66 @@
 package hu.bme.aut.android.socialcommunitythread.ui.uicomponent.navigationdrawer
 
+import android.content.Context
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import hu.bme.aut.android.socialcommunitythread.R
+import hu.bme.aut.android.socialcommunitythread.domain.interactors.AuthInteractor
 import hu.bme.aut.android.socialcommunitythread.domain.model.TopicThread
-import hu.bme.aut.android.socialcommunitythread.domain.repository.Repository
 import hu.bme.aut.android.socialcommunitythread.navigation.NavigationDrawerItems
-import hu.bme.aut.android.socialcommunitythread.ui.theme.Beige
-import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.MiniThreadRowItem
+import hu.bme.aut.android.socialcommunitythread.ui.theme.secondaryTextColor
+import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.circleimage.CircleImage
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Composable
 fun NavigationDrawer(navController: NavController, scaffoldState: ScaffoldState, coroutineScope: CoroutineScope) {
     var list: List<TopicThread> by remember { mutableStateOf(emptyList()) }
+    val context = LocalContext.current
+    val sharedPreference = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
     LaunchedEffect(key1 = "key") {
-        coroutineScope.launch {
-            list = Repository.getAllThread()
+        coroutineScope.launch(Dispatchers.IO) {
+            list = listOf()//Repository.getAllThread()
         }
+    }
+
+    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
+        if(AuthInteractor.currentLoggedInUser != null && AuthInteractor.currentLoggedInUser!!.profileImage != null) {
+            CircleImage(imageSize = 72, BitmapFactory.decodeByteArray(AuthInteractor.currentLoggedInUser!!.profileImage, 0, AuthInteractor.currentLoggedInUser!!.profileImage!!.size))
+        }
+        Spacer(modifier = Modifier.padding(top = 12.dp))
+        Text(AuthInteractor.currentLoggedInUser!!.userName, color = secondaryTextColor(), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Spacer(modifier = Modifier.padding(top = 12.dp))
+        Text(AuthInteractor.currentLoggedInUser!!.email, color = secondaryTextColor(), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
     }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colors.primary)
     ) {
         // List of navigation items
         item {
             NavigationDrawerItems.NavigationDrawerItems.forEach { item ->
-                NavigationDrawerRowItem(item, false) {
-                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                NavigationDrawerRowItem(item) {
+                    coroutineScope.launch(Dispatchers.IO) { scaffoldState.drawerState.close() }
                     navController.navigate(item.route) {
-                        if (item.route == "login_screen") {
+                        if (item.route == "login_") {
+                            sharedPreference.edit().remove("access").apply()
+                            sharedPreference.edit().remove("refresh").apply()
                             navController.popBackStack()
                             popUpTo(navController.currentDestination?.route.toString()) { inclusive = true }
                             launchSingleTop = true
@@ -54,20 +69,8 @@ fun NavigationDrawer(navController: NavController, scaffoldState: ScaffoldState,
                 }
             }
         }
-        item {
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
-                .background(Beige), verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Followed Threads", fontSize = 20.sp, color = Color.Black, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 4.dp))
-            }
-        }
-        items(list.size) { i ->
-            if (list.isNotEmpty()) {
-                MiniThreadRowItem(topicThread = list[i], navController = navController)
-                Divider()
-            }
+        item{
+            Spacer(Modifier.background(MaterialTheme.colors.primary).padding(top = 2.dp))
         }
 
     }

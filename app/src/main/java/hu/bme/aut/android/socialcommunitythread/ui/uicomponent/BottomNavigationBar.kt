@@ -3,6 +3,7 @@ package hu.bme.aut.android.socialcommunitythread.ui.uicomponent
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
@@ -14,13 +15,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import hu.bme.aut.android.socialcommunitythread.navigation.ThreadScreenNav
-import hu.bme.aut.android.socialcommunitythread.ui.theme.Beige
+import hu.bme.aut.android.socialcommunitythread.ui.theme.PrimaryLight
+import hu.bme.aut.android.socialcommunitythread.ui.theme.defaultIconColor
+import hu.bme.aut.android.socialcommunitythread.ui.theme.defaultTextColor
 
 @Composable
 fun BottomNavigationBar(navController: NavController) {
   
     BottomNavigation(
-        backgroundColor = Beige
+        backgroundColor = MaterialTheme.colors.secondary
     ) {
 
         // observe the backstack
@@ -53,12 +56,12 @@ fun BottomNavigationBar(navController: NavController) {
                 
                 // Icon of navItem
                 icon = {
-                    Icon(imageVector = navItem.icon, contentDescription = navItem.label)
+                    Icon(imageVector = navItem.icon, contentDescription = navItem.label, tint = defaultIconColor())
                 },
                 
                 // label
                 label = {
-                    Text(text = navItem.label)
+                    Text(text = navItem.label, color = defaultTextColor())
                 },
                 alwaysShowLabel = false
             )

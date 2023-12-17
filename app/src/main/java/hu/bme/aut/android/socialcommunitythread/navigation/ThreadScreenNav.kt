@@ -11,15 +11,15 @@ sealed class ThreadScreenNav(val route: String) {
     object MainThreadScreenNav : ThreadScreenNav("main_thread")
     object SearchScreenNav : ThreadScreenNav("search")
     object ChatListScreenNav : ThreadScreenNav("chat_list")
-    object ChatDetailsScreenNav : ThreadScreenNav("chat_details")
-    object ThreadDetailsNav : ThreadScreenNav("thread_details/{postId}")
+    object ChatDetailsScreenNav : ThreadScreenNav("chat_details/{chatId}")
+    object PostDetailsNav : ThreadScreenNav("post_details/{threadId}/{postId}")
     object CreateThreadNav : ThreadScreenNav("create_thread")
     object UserProfileNav : ThreadScreenNav("user_profile")
     object FriendListNav: ThreadScreenNav("friend_list")
     object SavedPostsNav: ThreadScreenNav("saved_posts")
     object TopicThreadNav: ThreadScreenNav("topic_thread/{threadId}")
     object CameraNav: ThreadScreenNav("camera")
-    object CreatePostNav: ThreadScreenNav("create_post")
+    object CreatePostNav: ThreadScreenNav("create_post/{threadId}")
 }
 
 object NavigationDrawerItems {

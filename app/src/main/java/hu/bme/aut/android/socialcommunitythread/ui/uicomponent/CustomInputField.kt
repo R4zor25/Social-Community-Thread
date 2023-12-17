@@ -12,12 +12,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
-import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.sharp.Clear
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -35,18 +32,19 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import hu.bme.aut.android.socialcommunitythread.ui.theme.Beige
+import hu.bme.aut.android.socialcommunitythread.ui.theme.PrimaryLight
+import hu.bme.aut.android.socialcommunitythread.ui.theme.myAppTextFieldColors
 
 val gradient = Brush.horizontalGradient(
     colors = listOf(
-        Beige, Beige
+        PrimaryLight, PrimaryLight
     )
 )
 
 @ExperimentalComposeUiApi
 @Preview
 @Composable
-fun InputPreview(){
+fun InputPreview() {
     CustomTextField(
         modifier = Modifier
             .background(
@@ -55,12 +53,11 @@ fun InputPreview(){
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         leadingIcon = { Icon(Icons.Filled.Email, "contentDescription") },
-        trailingIcon =  { Icon(Icons.Filled.Clear, "contentDescription") },
+        trailingIcon = { Icon(Icons.Filled.Clear, "contentDescription") },
         onTextChange = {},
         text = "",
         hint = "Email",
-        getPasswordVisibility = {true},
-        passwordVisibility = true
+        getPasswordVisibility = { true }
     )
 }
 
@@ -76,11 +73,9 @@ fun CustomTextField(
     hint: String?,
     keyboardOptions: KeyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
     getPasswordVisibility: () -> Boolean,
-    passwordVisibility : Boolean
 ) {
     val localFocusManager = LocalFocusManager.current
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -93,31 +88,22 @@ fun CustomTextField(
                 value = text.toString(),
                 onValueChange = onTextChange,
                 shape = RoundedCornerShape(30.dp),
-                colors = TextFieldDefaults.textFieldColors(
-                    textColor = Color.Black,
-                    backgroundColor =  Color.Transparent,
-                    cursorColor = Color.Black,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    placeholderColor = Color.Gray
-                ),
+                colors = myAppTextFieldColors(),
                 keyboardOptions = keyboardOptions,
                 keyboardActions = KeyboardActions(
                     onDone = {
                         localFocusManager.clearFocus()
                     },
-                    onNext = {localFocusManager.moveFocus(FocusDirection.Down)}
+                    onNext = { localFocusManager.moveFocus(FocusDirection.Down) }
                 ),
                 visualTransformation = if (getPasswordVisibility()) VisualTransformation.None else PasswordVisualTransformation(),
                 leadingIcon = leadingIcon,
                 trailingIcon = trailingIcon,
                 textStyle = TextStyle(
-                    color = Color.Black,
                     fontSize = 20.sp,
-                    textDecoration = TextDecoration.Underline ),
-                placeholder = { Text(text = hint.toString(), color = Color.Black, fontSize = 20.sp)},
-
-            )
+                ),
+                placeholder = { Text(text = hint.toString(), fontSize = 20.sp) },
+                )
         }
     }
 }

@@ -1,18 +1,19 @@
- package hu.bme.aut.android.socialcommunitythread.ui.createthread
+package hu.bme.aut.android.socialcommunitythread.ui.createthread
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
-import android.media.Image
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
 import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.ImageProxy
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -32,7 +33,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -52,9 +55,12 @@ import androidx.navigation.compose.rememberNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import hu.bme.aut.android.socialcommunitythread.R
+import hu.bme.aut.android.socialcommunitythread.domain.interactors.AuthInteractor
 import hu.bme.aut.android.socialcommunitythread.domain.model.TopicThread
 import hu.bme.aut.android.socialcommunitythread.ui.camera.getOutputDirectory
-import hu.bme.aut.android.socialcommunitythread.ui.theme.Beige
+import hu.bme.aut.android.socialcommunitythread.ui.theme.PrimaryLight
+import hu.bme.aut.android.socialcommunitythread.ui.theme.defaultIconColor
+import hu.bme.aut.android.socialcommunitythread.ui.theme.defaultTextColor
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.CustomTextField
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.circleimage.CircleImage
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.gradient
@@ -63,21 +69,21 @@ import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.topbar.TopBar
 import hu.bme.aut.android.socialcommunitythread.util.tagrecommender.ImageAnalyzer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
- @ExperimentalGetImage
+
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
+@ExperimentalGetImage
 @OptIn(ExperimentalPermissionsApi::class)
 @ExperimentalComposeUiApi
 @Composable
 fun CreateThreadScreen(navController: NavController) {
     val viewModel = hiltViewModel<CreateThreadViewModel>()
-    val anal = ImageAnalyzer()
+    val viewState = viewModel.uiState.collectAsState()
+    val analyzer = ImageAnalyzer()
     val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val contentResolver: ContentResolver = context.contentResolver
-    var threadName by rememberSaveable { mutableStateOf("") }
-    var description by rememberSaveable { mutableStateOf("") }
     val localFocusManager = LocalFocusManager.current
-    var capybara : Int? by rememberSaveable {mutableStateOf(R.drawable.capybara)}
     var cameraImage: Bitmap? by remember { mutableStateOf(null) }
     val mediaPermissionState = rememberMultiplePermissionsState(
         listOf(
@@ -89,10 +95,10 @@ fun CreateThreadScreen(navController: NavController) {
 
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) {
-            if(it != null) {
-                anal.analyze(it!!)
+            if (it != null) {
+                //anal.analyze(it!!)
+                viewModel.onThreadImageChange(it)
                 cameraImage = it
-                capybara = null
             }
         }
 
@@ -103,7 +109,8 @@ fun CreateThreadScreen(navController: NavController) {
                     is CreateThreadOneShotEvent.ThreadCreated -> {
                         navController.navigateUp()
                     }
-                    is CreateThreadOneShotEvent.ShowToastMessage -> TODO()
+
+                    is CreateThreadOneShotEvent.ShowToastMessage -> Toast.makeText(context, it.errorText, Toast.LENGTH_LONG).show()
                 }
             }.collect()
     }
@@ -111,7 +118,7 @@ fun CreateThreadScreen(navController: NavController) {
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        if(uri != null) {
+        if (uri != null) {
             try {
                 cameraImage = if (Build.VERSION.SDK_INT < 28) {
                     MediaStore.Images.Media.getBitmap(contentResolver, uri)
@@ -119,94 +126,123 @@ fun CreateThreadScreen(navController: NavController) {
                     val source: ImageDecoder.Source = ImageDecoder.createSource(contentResolver, uri)
                     ImageDecoder.decodeBitmap(source)
                 }
+                if (cameraImage != null) {
+                    viewModel.onThreadImageChange(cameraImage!!)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            capybara = null
         }
     }
 
 
     Scaffold(
-        modifier = Modifier.background(Color.White),
+        modifier = Modifier.background(MaterialTheme.colors.primary),
         scaffoldState = scaffoldState,
         topBar = {
             TopBar(stringResource(R.string.create_thread), leftIconImage = Icons.Filled.ArrowBack, rightIconImage = {
-                Image(
-                    painter = painterResource(R.drawable.capybara),
-                    contentDescription = "avatar",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                )
+                if(AuthInteractor.currentLoggedInUser != null
+                    && AuthInteractor.currentLoggedInUser!!.profileImage.size != null
+                    && AuthInteractor.currentLoggedInUser!!.profileImage.size > 0){
+                    Image(
+                        bitmap = BitmapFactory.decodeByteArray(AuthInteractor.currentLoggedInUser!!.profileImage, 0, AuthInteractor.currentLoggedInUser!!.profileImage!!.size).asImageBitmap(),
+                        contentDescription = "avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.capybara),
+                        contentDescription = "avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                    )
+                }
             }, scope, scaffoldState, {
                 navController.navigateUp()
             }, {})
         },
-        drawerBackgroundColor = Color.White,
+        drawerBackgroundColor = MaterialTheme.colors.primary,
         drawerContent = {
-            NavigationDrawer(navController = navController, scaffoldState = scaffoldState, scope)
+            NavigationDrawer(
+                navController = navController,
+                scaffoldState = scaffoldState, scope
+            )
         },
     ) {
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())) {
-            Text(text = "Thread name", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp, top = 16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colors.primary)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text(text = "Thread name", color = defaultTextColor(), fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp, top = 16.dp))
             CustomTextField(
                 modifier = Modifier
                     .padding(horizontal = 12.dp)
                     .background(
-                        brush = gradient,
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colors.secondary, MaterialTheme.colors.secondary
+                            )
+                        ),
                         shape = RoundedCornerShape(40.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 0.dp),
                 trailingIcon = {
                     IconButton(onClick = {
-                        threadName = ""
+                        viewModel.onThreadNameTextChange("")
                         localFocusManager.clearFocus()
                     }) {
                         Icon(imageVector = Icons.Filled.Clear, contentDescription = "Clear")
                     }
                 },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, keyboardType = KeyboardType.Text),
-                onTextChange = { threadName = it },
-                text = threadName,
+                onTextChange = { viewModel.onThreadNameTextChange(it) },
+                text = viewState.value.threadName,
                 hint = "Thread Name",
-                passwordVisibility = true,
                 getPasswordVisibility = { true }
             )
             Spacer(modifier = Modifier.padding(top = 12.dp))
-            Text(text = "Description", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
+            Text(text = "Description", color = defaultTextColor(), fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
             CustomTextField(
                 modifier = Modifier
                     .padding(horizontal = 12.dp)
                     .background(
-                        brush = gradient,
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colors.secondary, MaterialTheme.colors.secondary
+                            )
+                        ),
                         shape = RoundedCornerShape(40.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 0.dp),
                 trailingIcon = {
                     IconButton(onClick = {
-                        description = ""
+                        viewModel.onDescriptionTextChange("")
                         localFocusManager.clearFocus()
                     }) {
                         Icon(imageVector = Icons.Filled.Clear, contentDescription = "Clear")
                     }
                 },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Text),
-                onTextChange = { description = it },
-                text = description,
+                onTextChange = { viewModel.onDescriptionTextChange(it) },
+                text = viewState.value.description,
                 hint = "Description",
-                passwordVisibility = true,
                 getPasswordVisibility = { true }
             )
             Spacer(modifier = Modifier.padding(top = 12.dp))
             Text(text = "TopicThread Image", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
-            Row(modifier = Modifier
-                .padding(start = 16.dp)) {
+            Row(
+                modifier = Modifier
+                    .padding(start = 16.dp)
+            ) {
                 Box() {
-                    CircleImage(imageSize = 120, imageResource = capybara, cameraImage = cameraImage)
+                    CircleImage(imageSize = 120, cameraImage = cameraImage)
                     Box(Modifier.size(120.dp)) {
                         IconButton(modifier = Modifier
                             .size(40.dp)
@@ -216,54 +252,52 @@ fun CreateThreadScreen(navController: NavController) {
                                 expanded = !expanded
                             }
                         ) {
-                            Icon(Icons.Filled.Camera, contentDescription = "", tint = Color.Black)
+                            Icon(Icons.Filled.Camera, contentDescription = "", tint = defaultIconColor())
                         }
                         DropdownMenu(
                             expanded = expanded,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .background(Beige),
+                                .background(MaterialTheme.colors.secondary),
                             onDismissRequest = { expanded = false }
                         ) {
-                            DropdownMenuItem(modifier = Modifier.background(Beige), onClick = {
+                            DropdownMenuItem(modifier = Modifier.background(MaterialTheme.colors.secondary), onClick = {
                                 expanded = false
                                 if (mediaPermissionState.allPermissionsGranted) {
-                                        launcher.launch()
-                                }else{
+                                    launcher.launch()
+                                } else {
                                     mediaPermissionState.launchMultiplePermissionRequest()
                                 }
                             }) {
-                                Text("Camera")
+                                Text("Camera", color = defaultIconColor())
                             }
                             Divider()
-                            DropdownMenuItem(modifier = Modifier.background(Beige), onClick = {
+                            DropdownMenuItem(modifier = Modifier.background(MaterialTheme.colors.secondary), onClick = {
                                 expanded = false
-                                if (true == context.getOutputDirectory().listFiles()?.isNotEmpty()) {
-                                    galleryLauncher.launch("image/*")
-                                }
+                                galleryLauncher.launch("image/*")
                             }) {
-                                Text("Gallery")
+                                Text("Gallery", color = defaultTextColor())
                             }
                         }
                     }
                 }
             }
+
             Button(
                 onClick = {
-                    if(threadName.isNotBlank() && description.isNotBlank()) {
-                        viewModel.onAction(CreateThreadUiAction.CreateThread(TopicThread(id = 100, name = threadName,
-                            threadImageUrl = null, threadImageResource = capybara, threadImageBitmap = cameraImage,
-                            description = description
-                        )))
+                    if (viewState.value.threadName.isNotBlank() && viewState.value.description.isNotBlank()) {
+                        viewModel.createThread()
+                    } else {
+                        Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
                     }
                 },
                 shape = CircleShape,
                 modifier = Modifier
-                    //.width(130.dp)
-                    //.height(50.dp)
+                    .width(300.dp)
+                    .height(70.dp)
                     .padding(start = 16.dp, top = 16.dp),
                 colors = ButtonDefaults.textButtonColors(
-                    backgroundColor = Beige
+                    backgroundColor = MaterialTheme.colors.secondary
                 ),
                 contentPadding = PaddingValues(4.dp)
             ) {
@@ -276,6 +310,6 @@ fun CreateThreadScreen(navController: NavController) {
 @ExperimentalComposeUiApi
 @Composable
 @Preview
-fun CreateThreadScreenPreview(){
-    CreateThreadScreen(navController = rememberNavController())
+fun CreateThreadScreenPreview() {
+    //CreateThreadScreen(navController = rememberNavController())
 } 

@@ -1,43 +1,50 @@
 package hu.bme.aut.android.socialcommunitythread.ui.search
 
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import hu.bme.aut.android.socialcommunitythread.domain.repository.Repository
+import hu.bme.aut.android.socialcommunitythread.domain.interactors.ThreadInteractor
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class SearchViewModel @Inject constructor() : ViewModel() {
+class SearchViewModel @Inject constructor(
+    private val threadInteractor: ThreadInteractor
+) : ViewModel() {
     private val coroutineScope = MainScope()
 
-    //private val _viewState: MutableStateFlow<SearchViewState> = MutableStateFlow(SearchViewState())
-    //val viewState = _viewState.asStateFlow()
-    var viewState by mutableStateOf(SearchViewState())
+    private val viewState: MutableStateFlow<SearchViewState> = MutableStateFlow(SearchViewState())
+    val uiState = viewState.stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        viewState.value
+    )
 
     private val _oneShotEvents = Channel<SearchOneShotEvent>(Channel.BUFFERED)
     val oneShotEvent = _oneShotEvents.receiveAsFlow()
 
-    private val repository = Repository
 
     init {
-        viewModelScope.launch {
-            val list = repository.getAllThread()
-            viewState = viewState.copy(isLoading = false, items = list)
-            _oneShotEvents.send(SearchOneShotEvent.initAutoComplete)
-        }
-    }
+        viewModelScope.launch(Dispatchers.IO) {
+            threadInteractor.getFilteredThreads("", ){ errorMessage, topicThreadList ->
+                viewModelScope.launch(Dispatchers.IO) {
+                    if(errorMessage.isBlank() && topicThreadList != null) {
+                        viewState.update { it.copy(isLoading = false, items = topicThreadList) }
+                        _oneShotEvents.send(SearchOneShotEvent.InitAutoComplete)
+                    } else {
+                        _oneShotEvents.send(SearchOneShotEvent.ShowToastMessage(errorMessage))
+                    }
+                }
+            }
 
-    fun onAction(searchUiAction: SearchUiAction){
-        when (searchUiAction){
-
-            else -> {}
         }
     }
 }

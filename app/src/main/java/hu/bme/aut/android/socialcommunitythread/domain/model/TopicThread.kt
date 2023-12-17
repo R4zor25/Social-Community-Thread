@@ -1,15 +1,14 @@
 package hu.bme.aut.android.socialcommunitythread.domain.model
 
-import android.graphics.Bitmap
+import hu.bme.aut.android.socialcommunitythread.domain.dto.ThreadPost
 
 data class TopicThread(
-    var id : Int,
-    val name : String,
-    val threadImageUrl: String? = null,
-    val threadImageResource: Int? = null,
-    val threadImageBitmap: Bitmap? = null,
-    val description: String? = "",
-    val publicity: ThreadPublicity = ThreadPublicity.PUBLIC
+    var topicThreadId : Long = 0,
+    var name : String = "",
+    var threadImage: ByteArray = byteArrayOf(),
+    var description: String = "",
+   // var threadposts: List<ThreadPost> = listOf(),
+    //var publicity: ThreadPublicity = ThreadPublicity.PUBLIC
 )
 
 enum class ThreadPublicity{

@@ -5,14 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 
 data class UserProfileViewState(
     val isLoading: Boolean = false,
-    var username: MutableState<String> = mutableStateOf(""),
+    var username: String = "UserName",
     var email: MutableState<String> = mutableStateOf(""),
-    var editMode: Boolean = false)
+    var file: ByteArray = byteArrayOf())
 
 sealed class UserProfileOneShotEvent{
     data class ShowToastMessage(val errorText: String): UserProfileOneShotEvent()
-}
-
-sealed class UserProfileUiAction{
-
+    class UserUpdateSuccess(): UserProfileOneShotEvent()
 }

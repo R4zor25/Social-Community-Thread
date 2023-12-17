@@ -15,7 +15,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import hu.bme.aut.android.socialcommunitythread.ui.theme.Beige
+import hu.bme.aut.android.socialcommunitythread.ui.theme.PrimaryLight
+import hu.bme.aut.android.socialcommunitythread.ui.theme.SecondaryLight
 
 @Composable
 fun TextSearchBar(
@@ -47,8 +48,8 @@ fun TextSearchBar(
         colors = TextFieldDefaults.textFieldColors(
             textColor = Color.Black,
             cursorColor = Color.Black,
-            focusedIndicatorColor = Beige,
-            unfocusedIndicatorColor = Beige,
+            focusedIndicatorColor = MaterialTheme.colors.secondary,
+            unfocusedIndicatorColor = MaterialTheme.colors.secondary,
             focusedLabelColor = Color.Black,
             unfocusedLabelColor = Color.Black,
             trailingIconColor = Color.Black

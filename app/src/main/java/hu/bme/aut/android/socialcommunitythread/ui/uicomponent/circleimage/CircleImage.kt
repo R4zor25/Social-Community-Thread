@@ -20,9 +20,9 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 
 @Composable
-fun CircleImage(imageResource: Int? = null, imageUrl: String? = null, imageSize: Int, cameraImage: Bitmap? = null){
+fun CircleImage(imageSize: Int, cameraImage: Bitmap? = null) {
     val context = LocalContext.current
-    if(imageResource != null) {
+    /*if(imageResource != null) {
         Image(
             painter = painterResource(imageResource),
             contentDescription = "avatar",
@@ -53,14 +53,13 @@ fun CircleImage(imageResource: Int? = null, imageUrl: String? = null, imageSize:
                     .clip(CircleShape)
             )
         }
-    }else if (cameraImage != null){
-        Image(
-            painter = rememberAsyncImagePainter(cameraImage, filterQuality = FilterQuality.None),
-            contentDescription = "avatar",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(imageSize.dp)
-                .clip(CircleShape)
-        )
-    }
+    }else if (cameraImage != null){*/
+    Image(
+        painter = rememberAsyncImagePainter(cameraImage, filterQuality = FilterQuality.None),
+        contentDescription = "avatar",
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .size(imageSize.dp)
+            .clip(CircleShape)
+    )
 }

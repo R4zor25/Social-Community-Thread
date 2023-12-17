@@ -4,10 +4,12 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
@@ -28,36 +30,40 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import hu.bme.aut.android.socialcommunitythread.R
+import hu.bme.aut.android.socialcommunitythread.domain.interactors.AuthInteractor
 import hu.bme.aut.android.socialcommunitythread.ui.camera.getOutputDirectory
-import hu.bme.aut.android.socialcommunitythread.ui.theme.Beige
+import hu.bme.aut.android.socialcommunitythread.ui.theme.PrimaryLight
+import hu.bme.aut.android.socialcommunitythread.ui.theme.defaultIconColor
+import hu.bme.aut.android.socialcommunitythread.ui.theme.defaultTextColor
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.circleimage.CircleImage
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.navigationdrawer.NavigationDrawer
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.topbar.TopBar
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
+import java.io.ByteArrayOutputStream
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun UserProfileScreen(navController: NavController) {
-    val viewModel = hiltViewModel<UserProfileViewModel>()
-    //val viewState by remember{ mutableStateOf(viewModel.viewState)}
-    val viewState = viewModel.viewState
+fun UserProfileScreen(navController: NavController, viewModel: UserProfileViewModel) {
+    val viewState = viewModel.uiState.collectAsState().value
     val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    var capybara: Int? by rememberSaveable { mutableStateOf(R.drawable.capybara) }
     var cameraImage: Bitmap? by remember { mutableStateOf(null) }
     val mediaPermissionState = rememberMultiplePermissionsState(
         listOf(
@@ -69,8 +75,11 @@ fun UserProfileScreen(navController: NavController) {
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) {
             if (it != null) {
+                val stream = ByteArrayOutputStream()
+                it.compress(Bitmap.CompressFormat.PNG, 90, stream)
+                val image = stream.toByteArray()
+                viewModel.updateProfileImage(image)
                 cameraImage = it
-                capybara = null
             }
         }
     var expanded by remember { mutableStateOf(false) }
@@ -86,10 +95,14 @@ fun UserProfileScreen(navController: NavController) {
                     val source: ImageDecoder.Source = ImageDecoder.createSource(contentResolver, uri)
                     ImageDecoder.decodeBitmap(source)
                 }
+                val stream = ByteArrayOutputStream()
+                cameraImage?.compress(Bitmap.CompressFormat.PNG, 90, stream)
+                val image = stream.toByteArray()
+                viewModel.updateProfileImage(image)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            capybara = null
+
         }
     }
 
@@ -97,107 +110,136 @@ fun UserProfileScreen(navController: NavController) {
         viewModel.oneShotEvent
             .onEach {
                 when (it) {
-                    is UserProfileOneShotEvent.ShowToastMessage -> TODO()
+                    is UserProfileOneShotEvent.ShowToastMessage -> {
+                        Toast.makeText(context, it.errorText, Toast.LENGTH_LONG).show()
+                    }
+
+                    is UserProfileOneShotEvent.UserUpdateSuccess -> {
+                        navController.navigateUp()
+                    }
                 }
             }.collect()
     }
 
     Scaffold(
-        modifier = Modifier.background(Color.White),
+        modifier = Modifier.background(MaterialTheme.colors.primary),
         scaffoldState = scaffoldState,
         topBar = {
             TopBar("Profile", leftIconImage = Icons.Filled.ArrowBack, rightIconImage = {
-                Image(
-                    painter = painterResource(R.drawable.capybara),
-                    contentDescription = "avatar",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                )
+                if (AuthInteractor.currentLoggedInUser != null
+                    && AuthInteractor.currentLoggedInUser!!.profileImage.size != null
+                    && AuthInteractor.currentLoggedInUser!!.profileImage.size > 0
+                ) {
+                    Image(
+                        bitmap = BitmapFactory.decodeByteArray(AuthInteractor.currentLoggedInUser!!.profileImage, 0, AuthInteractor.currentLoggedInUser!!.profileImage!!.size).asImageBitmap(),
+                        contentDescription = "avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.capybara),
+                        contentDescription = "avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                    )
+                }
             }, scope, scaffoldState, {
                 navController.navigateUp()
             }, {})
         },
-        drawerBackgroundColor = Color.White,
+        drawerBackgroundColor = MaterialTheme.colors.primary,
         drawerContent = {
             NavigationDrawer(navController = navController, scaffoldState = scaffoldState, scope)
         },
     ) {
-        Surface(color = Beige, shape = RoundedCornerShape(40.dp).copy(ZeroCornerSize, ZeroCornerSize)) {
-            Row(Modifier
-                .fillMaxWidth()
-                .padding(8.dp)) {
-                Column(Modifier
-                    .fillMaxWidth(0.8f)
-                    .padding(top = 8.dp)) {
-                    if(!viewState.editMode) {
-                        Row() {
-                            Text("Username: " + viewState.username.value)
-                            Spacer(Modifier.padding(end = 4.dp))
-                            Icon(Icons.Filled.Edit, contentDescription = "", tint = Color.Black)
-                        }
-                        Spacer(modifier = Modifier.padding(top = 8.dp))
-                        Row() {
-                            Text("E-mail: " + viewState.email.value)
-                            Spacer(Modifier.padding(end = 4.dp))
-                            IconButton(onClick = {
-                                //viewState.editMode = !viewState.value.editMode
-                                viewState.username.value = viewState.username.value + "j"
-                                viewState.email.value = viewState.email.value + "i"
-                            }) {
-                                Icon(Icons.Filled.Edit, contentDescription = "", tint = Color.Black)
-                            }
-                        }
-                    }else{
-                        //TODO edit mode
+        Surface(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(40.dp).copy(ZeroCornerSize, ZeroCornerSize)) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                Column(
+                    Modifier
+                        .fillMaxWidth(0.8f)
+                        .padding(top = 8.dp)
+                ) {
+                    Row() {
+                        Text("Username: " + AuthInteractor.currentLoggedInUser!!.userName, color = defaultTextColor())
+                        Spacer(Modifier.height(8.dp))
+                        Text("Email: " + AuthInteractor.currentLoggedInUser!!.email, color = defaultTextColor())
                     }
-                }
-                Column() {
-                    Box() {
-                        CircleImage(imageSize = 80, imageResource = capybara, cameraImage = cameraImage)
-                        Box(Modifier.size(95.dp)) {
-                            IconButton(modifier = Modifier
-                                .size(40.dp)
-                                .align(Alignment.BottomEnd)
-                                .semantics { contentDescription = "TestLeftIcon" },
-                                onClick = {
-                                    expanded = !expanded
-                                }
-                            ) {
-                                Icon(Icons.Filled.Camera, contentDescription = "", tint = Color.Black)
-                            }
-                            DropdownMenu(
-                                expanded = expanded,
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .background(Beige),
-                                onDismissRequest = { expanded = false }
-                            ) {
-                                DropdownMenuItem(modifier = Modifier.background(Beige), onClick = {
-                                    expanded = false
-                                    if (mediaPermissionState.allPermissionsGranted) {
-                                        launcher.launch()
-                                    } else {
-                                        mediaPermissionState.launchMultiplePermissionRequest()
+                    Spacer(modifier = Modifier.padding(top = 8.dp))
+                    Column() {
+                        Box() {
+                            CircleImage(
+                                imageSize = 80, cameraImage = if (cameraImage == null
+                                    && AuthInteractor.currentLoggedInUser?.profileImage != null
+                                    && AuthInteractor.currentLoggedInUser?.profileImage?.size!! > 0) {
+                                    BitmapFactory.decodeByteArray(AuthInteractor.currentLoggedInUser!!.profileImage, 0, AuthInteractor.currentLoggedInUser!!.profileImage!!.size)
+                                } else cameraImage
+                            )
+                            Box(Modifier.size(95.dp)) {
+                                IconButton(modifier = Modifier
+                                    .size(40.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .semantics { contentDescription = "TestLeftIcon" },
+                                    onClick = {
+                                        expanded = !expanded
                                     }
-                                }) {
-                                    Text("Camera")
+                                ) {
+                                    Icon(Icons.Filled.Camera, contentDescription = "", tint = defaultIconColor())
                                 }
-                                Divider()
-                                DropdownMenuItem(modifier = Modifier.background(Beige), onClick = {
-                                    expanded = false
-                                    if (mediaPermissionState.allPermissionsGranted) {
-                                        if (context.getOutputDirectory().listFiles()?.isNotEmpty() == true) {
-                                            galleryLauncher.launch("image/*")
+                                DropdownMenu(
+                                    expanded = expanded,
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .background(MaterialTheme.colors.secondary),
+                                    onDismissRequest = { expanded = false }
+                                ) {
+                                    DropdownMenuItem(modifier = Modifier.background(MaterialTheme.colors.secondary), onClick = {
+                                        expanded = false
+                                        if (mediaPermissionState.allPermissionsGranted) {
+                                            launcher.launch()
+                                        } else {
+                                            mediaPermissionState.launchMultiplePermissionRequest()
                                         }
-                                    }else{
-                                        mediaPermissionState.launchMultiplePermissionRequest()
+                                    }) {
+                                        Text("Camera", color = defaultTextColor())
                                     }
-                                }) {
-                                    Text("Gallery")
+                                    Divider()
+                                    DropdownMenuItem(modifier = Modifier.background(MaterialTheme.colors.secondary), onClick = {
+                                        expanded = false
+                                        if (mediaPermissionState.allPermissionsGranted) {
+                                            galleryLauncher.launch("image/*")
+                                        } else {
+                                            mediaPermissionState.launchMultiplePermissionRequest()
+                                        }
+                                    }) {
+                                        Text("Gallery", color = defaultTextColor())
+                                    }
                                 }
                             }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                viewModel.updateUserProfile()
+                            },
+                            shape = CircleShape,
+                            modifier = Modifier
+                                .width(130.dp)
+                                .height(50.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                backgroundColor = MaterialTheme.colors.secondary
+                            ),
+                            contentPadding = PaddingValues(4.dp)
+                        ) {
+                            Text(text = "Save", fontSize = 24.sp, color = defaultTextColor())
                         }
                     }
                 }

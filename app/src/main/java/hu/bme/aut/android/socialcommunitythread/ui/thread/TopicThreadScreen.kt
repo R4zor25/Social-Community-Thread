@@ -1,6 +1,8 @@
 package hu.bme.aut.android.socialcommunitythread.ui.thread
 
-import android.inputmethodservice.Keyboard
+import android.annotation.SuppressLint
+import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,14 +17,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import hu.bme.aut.android.socialcommunitythread.R
-import hu.bme.aut.android.socialcommunitythread.domain.model.TopicThread
-import hu.bme.aut.android.socialcommunitythread.ui.theme.SecondaryColor
+import hu.bme.aut.android.socialcommunitythread.domain.interactors.AuthInteractor
+import hu.bme.aut.android.socialcommunitythread.ui.theme.defaultIconColor
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.navigationdrawer.NavigationDrawer
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.threadrowitem.ThreadRowItem
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.topbar.TopBar
@@ -30,31 +34,28 @@ import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.topicthreadheader
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 
+@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
-fun TopicThreadScreen(navController: NavController, threadId: Int) {
+fun TopicThreadScreen(navController: NavController, threadId: Long) {
+    val context = LocalContext.current
     val viewModel = hiltViewModel<TopicThreadViewModel>()
     val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val viewState = viewModel.viewState
+    val viewState = viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
-    var thread: TopicThread by remember {
-        mutableStateOf(TopicThread(
-            id = 0, name = ""
-        ))
-    }
 
     LaunchedEffect("key") {
         viewModel.oneShotEvent
             .onEach {
                 when (it) {
-                    is TopicThreadOneShotEvent.ShowToastMessage -> TODO()
-                    TopicThreadOneShotEvent.AcquireId -> {
-                        viewModel.threadId = threadId
-                        viewModel.onAction(TopicThreadUiAction.OnInit())
+                    is TopicThreadOneShotEvent.ShowToastMessage -> {
+                        Toast.makeText(context, it.errorText, Toast.LENGTH_LONG).show()
                     }
-                    is TopicThreadOneShotEvent.ThreadItemAcquired -> {
-                        thread = it.topicThread
+
+                    TopicThreadOneShotEvent.AcquireId -> {
+                        viewModel.passThreadId(threadId)
+                        viewModel.onInit()
                     }
                 }
             }.collect()
@@ -64,66 +65,91 @@ fun TopicThreadScreen(navController: NavController, threadId: Int) {
         modifier = Modifier.background(Color.White),
         scaffoldState = scaffoldState,
         topBar = {
-            TopBar(thread.name, leftIconImage = Icons.Filled.ArrowBack, rightIconImage = {
-                Image(
-                    painter = painterResource(R.drawable.capybara),
-                    contentDescription = "avatar",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                )
+            TopBar(viewState.value.personalTopicThread.name, leftIconImage = Icons.Filled.ArrowBack, rightIconImage = {
+                if(AuthInteractor.currentLoggedInUser != null
+                    && AuthInteractor.currentLoggedInUser!!.profileImage.size != null
+                    && AuthInteractor.currentLoggedInUser!!.profileImage.size > 0){
+                    Image(
+                        bitmap = BitmapFactory.decodeByteArray(AuthInteractor.currentLoggedInUser!!.profileImage, 0, AuthInteractor.currentLoggedInUser!!.profileImage!!.size).asImageBitmap(),
+                        contentDescription = "avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.capybara),
+                        contentDescription = "avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                    )
+                }
             }, scope, scaffoldState, onLeftIconClick = {
                 navController.navigateUp()
             }, {
 
             })
         },
-        drawerBackgroundColor = Color.White,
+        drawerBackgroundColor = MaterialTheme.colors.secondary,
         drawerContent = {
             NavigationDrawer(navController = navController, scaffoldState = scaffoldState, scope)
         },
         floatingActionButton = {
-            Button(onClick = { navController.navigate("create_post") }, colors = ButtonDefaults.buttonColors(backgroundColor = SecondaryColor)) {
-                Icon(imageVector = Icons.Filled.Add, contentDescription = "")
+            Button(onClick = { navController.navigate("create_post/${threadId}") }, colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.secondary)) {
+                Icon(imageVector = Icons.Filled.Add, tint = defaultIconColor(), contentDescription = "")
             }
         }
     ) {
-        if (!viewModel.viewState.isLoading) {
-            LazyColumn(state = listState, modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 60.dp)) {
+        if (!viewState.value.isLoading) {
+            LazyColumn(
+                state = listState, modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colors.primary)
+                    .padding(bottom = 60.dp)
+            ) {
                 item {
-                    TopicThreadHeader(thread = thread)
+                    TopicThreadHeader(thread = viewState.value.personalTopicThread, follow = {
+                        viewModel.followThread()
+                    }, unfollow = {
+                        viewModel.unfollowThread()
+                    })
                 }
-                items(viewState.items.size) { i ->
-                    val item = viewState.items[i]
-                    if (i >= viewState.items.size - 1 && !viewState.endReached && !viewState.isLoading) {
-                        viewModel.loadNextItems()
-                    }
+                items(viewState.value.items.size) { i ->
+                    val item = viewState.value.items[i]
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
                         ThreadRowItem(item, onItemClick = {
-                            navController.navigate("thread_details/${item.id}")
+                            navController.navigate("post_details/${item.topicThread.topicThreadId}/${item.postId}")
                         },
                             onSaveLaterClick = {
-                                if (it.isSaved)
-                                    viewModel.onAction(TopicThreadUiAction.SavePostUiAction(it))
+                                if (it.isSavedByUser)
+                                    viewModel.savePost(it)
                                 else
-                                    viewModel.onAction(TopicThreadUiAction.UnsavePostUiAction(it))
+                                    viewModel.unsavePost(it)
+                            },
+                            onUpVote = {
+                                viewModel.upvotePost(it)
+                            },
+                            onDownVote = {
+                                viewModel.downVotePost(it)
                             })
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
                 item {
-                    if (viewState.isLoading) {
-                        Row(modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 60.dp),
-                            horizontalArrangement = Arrangement.Center) {
+                    if (viewState.value.isLoading) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 60.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
                             CircularProgressIndicator()
                         }
                     }

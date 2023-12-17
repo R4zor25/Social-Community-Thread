@@ -15,10 +15,11 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -31,35 +32,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.google.firebase.analytics.FirebaseAnalytics
 import hu.bme.aut.android.socialcommunitythread.R
 import hu.bme.aut.android.socialcommunitythread.navigation.ThreadScreenNav
-import hu.bme.aut.android.socialcommunitythread.ui.theme.Beige
+import hu.bme.aut.android.socialcommunitythread.ui.theme.PrimaryLight
+import hu.bme.aut.android.socialcommunitythread.ui.theme.defaultTextColor
+import hu.bme.aut.android.socialcommunitythread.ui.theme.inputFieldBackgroundBrush
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.CustomTextField
 import hu.bme.aut.android.socialcommunitythread.ui.uicomponent.gradient
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 
 @Composable
-fun RegistrationScreen(navController: NavController) {
+fun RegistrationScreen(navController: NavController, viewModel: RegistrationViewModel) {
     Box {
         BgCard()
-        MainCardRegistration(navController)
+        MainCardRegistration(navController, viewModel)
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun RegistrationScreenPreview() {
-    Box {
-        BgCard()
-        MainCardRegistration(navController = NavController(LocalContext.current))
-    }
-
-}
-
 @Composable
 fun BgCard() {
-    Surface(color = Beige, modifier = Modifier.fillMaxSize()) {
+    Surface(color = MaterialTheme.colors.secondary, modifier = Modifier.fillMaxSize()) {
         Column(
             verticalArrangement = Arrangement.Bottom,
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -72,9 +65,11 @@ fun BgCard() {
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun MainCardRegistration(navController: NavController) {
-    val viewModel = hiltViewModel<RegistrationViewModel>()
+fun MainCardRegistration(navController: NavController, viewModel : RegistrationViewModel) {
     val context = LocalContext.current
+    val viewState = viewModel.uiState.collectAsState()
+    var passwordVisibility by remember { mutableStateOf(false)}
+    val firebaseAnalytics: FirebaseAnalytics = FirebaseAnalytics.getInstance(context)
 
     LaunchedEffect("key") {
         viewModel.oneShotEvent
@@ -88,10 +83,12 @@ fun MainCardRegistration(navController: NavController) {
             }
             .collect()
     }
-    Surface(
-        color = Color.White, modifier = Modifier.requiredHeight(720.dp),
-        shape = RoundedCornerShape(60.dp).copy(ZeroCornerSize, ZeroCornerSize)
-    ) {
+    Box(
+        modifier = Modifier
+            .requiredHeight(700.dp)
+            .clip(RoundedCornerShape(60.dp).copy(ZeroCornerSize, ZeroCornerSize))
+            .background(MaterialTheme.colors.primary))
+    {
         Column(
             modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -102,21 +99,20 @@ fun MainCardRegistration(navController: NavController) {
                     .width(280.dp)
             )
             Spacer(modifier = Modifier.padding(16.dp))
-            Text(text = stringResource(R.string.sign_up), fontWeight = FontWeight(700), fontSize = 32.sp, color = Color.Black)
+            Text(text = stringResource(R.string.sign_up), fontWeight = FontWeight(700), fontSize = 32.sp, color = defaultTextColor())
             Spacer(modifier = Modifier.padding(16.dp))
             CustomTextField(
                 modifier = Modifier
                     .background(
-                        brush = gradient,
+                        brush = inputFieldBackgroundBrush(),
                         shape = RoundedCornerShape(40.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 0.dp),
-                leadingIcon = { Icon(Icons.Filled.Person, tint = Color.Black, contentDescription = "") },
+                leadingIcon = { Icon(Icons.Filled.Person, contentDescription = "") },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, keyboardType = KeyboardType.Text),
-                onTextChange = { viewModel.viewState = viewModel.viewState.copy(userName = it)  },
-                text = viewModel.viewState.userName,
+                onTextChange = { viewModel.onUsernameTextChange(it)  },
+                text = viewState.value.userName,
                 hint = stringResource(R.string.user_name),
-                passwordVisibility = true,
                 getPasswordVisibility = { true }
             )
 
@@ -125,53 +121,54 @@ fun MainCardRegistration(navController: NavController) {
             CustomTextField(
                 modifier = Modifier
                     .background(
-                        brush = gradient,
-                        shape = CircleShape
+                        brush = inputFieldBackgroundBrush(),
+                        shape = RoundedCornerShape(40.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 0.dp),
-                leadingIcon = { Icon(Icons.Filled.Email, tint = Color.Black, contentDescription = "") },
+                leadingIcon = { Icon(Icons.Filled.Email, contentDescription = "") },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, keyboardType = KeyboardType.Email),
-                onTextChange = { viewModel.viewState = viewModel.viewState.copy(email = it) },
-                text = viewModel.viewState.email,
+                onTextChange = { viewModel.onEmailTextChange(it) },
+                text = viewState.value.email,
                 hint = stringResource(R.string.email),
-                passwordVisibility = true,
                 getPasswordVisibility = { true }
             )
             Spacer(modifier = Modifier.padding(8.dp))
             CustomTextField(
                 modifier = Modifier
                     .background(
-                        brush = gradient,
-                        shape = CircleShape
+                        brush = inputFieldBackgroundBrush(),
+                        shape = RoundedCornerShape(40.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 0.dp),
                 leadingIcon = {
-                    val image = if (viewModel.viewState.passwordVisibility)
+                    val image = if (passwordVisibility)
                         Icons.Filled.Visibility
                     else Icons.Filled.VisibilityOff
-                    IconButton(onClick = { viewModel.viewState = viewModel.viewState.copy(passwordVisibility = !viewModel.viewState.passwordVisibility) }) {
-                        Icon(image, tint = Color.Black, contentDescription = "")
+                    IconButton(onClick = { passwordVisibility = !passwordVisibility }) {
+                        Icon(image, contentDescription = "")
                     }
                 },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Text),
-                onTextChange = { viewModel.viewState = viewModel.viewState.copy(password = it) },
-                text = viewModel.viewState.password,
+                onTextChange = { viewModel.onPasswordTextChange(it)},
+                text = viewState.value.password,
                 hint = stringResource(R.string.password),
-                passwordVisibility = false,
-                getPasswordVisibility = { viewModel.viewState.passwordVisibility }
+                getPasswordVisibility = { passwordVisibility }
             )
             Spacer(modifier = Modifier.padding(vertical = 12.dp))
             Button(
-                onClick = { viewModel.onAction(RegistrationUiAction.OnRegistration(viewModel.viewState.email, viewModel.viewState.userName, viewModel.viewState.password)) }, shape = CircleShape,
+                onClick = { viewModel.register(
+                    viewState.value.email,
+                    viewState.value.userName,
+                    viewState.value.password) }, shape = CircleShape,
                 modifier = Modifier
                     .width(130.dp)
                     .height(50.dp),
                 colors = ButtonDefaults.textButtonColors(
-                    backgroundColor = Beige
+                    backgroundColor = MaterialTheme.colors.secondary
                 ),
                 contentPadding = PaddingValues(4.dp)
             ) {
-                Text(text = stringResource(R.string.register), fontSize = 24.sp, color = Color.Black)
+                Text(text = stringResource(R.string.register), fontSize = 24.sp, color = defaultTextColor())
             }
             Spacer(modifier = Modifier.padding(vertical = 12.dp))
         }

@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import hu.bme.aut.android.socialcommunitythread.ui.theme.Beige
+import hu.bme.aut.android.socialcommunitythread.ui.theme.PrimaryLight
 
 @Composable
 fun PostTypeRowItem(imageVector: ImageVector, title: String, onClick: () -> Unit, selected: Boolean = false) {
@@ -31,7 +31,7 @@ fun PostTypeRowItem(imageVector: ImageVector, title: String, onClick: () -> Unit
     else
         FontWeight.Normal
 
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().background(Beige).clickable { onClick.invoke() } ) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().background(PrimaryLight).clickable { onClick.invoke() } ) {
         Icon(imageVector = imageVector, contentDescription = "", tint = tintBackground, modifier = Modifier.padding(end = 8.dp, start = 6.dp).size(48.dp))
         Text(text = title, fontWeight = fontWeight, color = tintBackground, fontSize = 16.sp)
         if(selected){

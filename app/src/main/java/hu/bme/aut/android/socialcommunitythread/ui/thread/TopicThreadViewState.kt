@@ -1,29 +1,21 @@
 package hu.bme.aut.android.socialcommunitythread.ui.thread
 
-import hu.bme.aut.android.socialcommunitythread.domain.model.Post
-import hu.bme.aut.android.socialcommunitythread.domain.model.TopicThread
-import hu.bme.aut.android.socialcommunitythread.ui.mainthread.MainThreadUiAction
-import hu.bme.aut.android.socialcommunitythread.ui.threaddetails.ThreadDetailsOneShotEvent
-import hu.bme.aut.android.socialcommunitythread.ui.threaddetails.ThreadDetailsUiAction
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import hu.bme.aut.android.socialcommunitythread.domain.dto.PersonalThreadPost
+import hu.bme.aut.android.socialcommunitythread.domain.dto.PersonalTopicThread
 
 
 data class TopicThreadViewState(
     val isLoading: Boolean = false,
-    val items: List<Post> = emptyList(),
+    val items: SnapshotStateList<PersonalThreadPost> = mutableStateListOf(),
     val error: String? = null,
     val endReached: Boolean = false,
-    val page: Int = 0)
+    val page: Int = 0,
+    var personalTopicThread: PersonalTopicThread = PersonalTopicThread()
+)
 
 sealed class TopicThreadOneShotEvent{
     data class ShowToastMessage(val errorText: String): TopicThreadOneShotEvent()
     object AcquireId: TopicThreadOneShotEvent()
-    data class ThreadItemAcquired(val topicThread: TopicThread): TopicThreadOneShotEvent()
-}
-
-sealed class TopicThreadUiAction{
-    class OnInit(): TopicThreadUiAction()
-    class FollowThread(threadId: Int): TopicThreadUiAction()
-    class UnfollowThread(threadId: Int): TopicThreadUiAction()
-    class SavePostUiAction(val post: Post): TopicThreadUiAction() //TODO WITH ID
-    class UnsavePostUiAction(val post: Post): TopicThreadUiAction() //TODO WITH ID
 }
